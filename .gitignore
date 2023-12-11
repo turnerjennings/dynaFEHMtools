@@ -1,0 +1,7 @@
+*.k
+lspost*
+*.csv
+*.bash
+.vscode
+.pytest_cache
+__pycache__
