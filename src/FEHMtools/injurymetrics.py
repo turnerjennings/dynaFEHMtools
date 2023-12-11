@@ -36,8 +36,15 @@ def element_pressure(object: D3plot, element_set: np.ndarray, type="solid"):
 
 
 # function to calculate the max principal strain history
-# return: array of Max principal stres/strain, max shear s/s (n_states,n_els)
 def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type="solid"):
+    '''
+    Returns an array of principal stresses or strains
+    with demension [n_states,n_elements,3]
+    Returns an array of max shear strain with shape [n_states,n_elements]
+
+    for MPS array, values are sorted largest to smallest
+    Principal confiuration calculated by the eigenvalues of the stress tensor
+    '''
     if stressstrain == "strain" and type == "solid":
         ss_tensor = object.arrays["element_solid_strain"]
     elif stressstrain == "stress" and type == "solid":
@@ -46,8 +53,6 @@ def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type=
         raise ValueError("Type must be 'stress' or 'strain'")
 
     ss_tensor = ss_tensor[:, element_set, :, :]
-    n_elements = element_set.shape[0]
-    n_timesteps = ss_tensor.shape[0]
     # define strain tensor components
     sxx = ss_tensor[:, :, :, 0]
     syy = ss_tensor[:, :, :, 1]
@@ -78,8 +83,12 @@ def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type=
 
 
 # function to calculate the von mises stress
-# return array of von mises stress (n_states, n_els)
 def von_mises(object: D3plot, element_set: np.ndarray):
+    '''
+    Returns an array of the von mises stress with dimension [n_states,n_elements]
+
+    Calculates the von mises stress from the original stress tensor
+    '''
     stress = object.arrays["element_solid_stress"]
     set_stress = stress[:, element_set, :, :]
 
@@ -109,6 +118,11 @@ def von_mises(object: D3plot, element_set: np.ndarray):
 # function to return the internal energy of a part set
 # return: array of part internal energy (n_states, n_parts)
 def internal_energy(object: D3plot, partset: list):
+    '''
+    Returns the total internal energy of a part set
+
+    Internal energy calculated from the sum of all parts in the given part set
+    '''
     # find part index from part number
     ids = object.arrays["part_ids"]
     mask = np.isin(ids, partset)
@@ -122,8 +136,17 @@ def internal_energy(object: D3plot, partset: list):
 # function to calculate the CSDM distribution
 # return distribution, %>0.15, %>0.25
 def csdm(MPS: np.ndarray, volume: np.ndarray):
-    # find number of timesteps in array
+    '''
+    Return two floats of Cumulative Strain Damage Measure (CSDM)
+    Return survival array with dimensions [1000]
+    Return float of Volume Strain Metric
 
+    CSDM15 and CSDM25 calculates the volume fraction of total unique 
+    elements which exceed 0.15 and 0.25 strain respectively
+
+    VSM calculates the area under the survival curve describing the 
+    integral of volume-weighted strain
+    '''
     # initialize outputs
 
     elmax = np.max(MPS, axis=0)

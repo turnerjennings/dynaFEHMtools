@@ -1,16 +1,14 @@
 from lasso.dyna import D3plot
 import numpy as np
 import scipy.spatial as sps
-import csv
-import time
-from datetime import datetime
+import injurymetrics
 
 # *****************************USER INPUTS****************************
 filepaths_to_analyse = [""]
 
 
 # define brain and skull part numbers
-def brain_set(offset=0):
+def THUMS_brain_set(offset=0):
     """
     Return integer list
 
@@ -36,7 +34,7 @@ def brain_set(offset=0):
     return [i + offset for i in brain_part_ids]
 
 
-def skull_sets(offset=0):
+def THUMS_skull_sets(offset=0):
     """
     Return two integer lists (solid_ids, shell_ids)
 
@@ -266,10 +264,6 @@ def element_list_volume_history(
 
     return element_volume
 
-
-
-
-
 # function to calculate the volume fraction exceeding a threshold
 # return: %>threshold
 def volume_exceed(values: np.ndarray, volume: np.ndarray, threshold: float):
@@ -285,170 +279,10 @@ def volume_exceed(values: np.ndarray, volume: np.ndarray, threshold: float):
     return vol_frac
 
 
-
-
-'''
-# function to process a file
-def process_run(pathto: str, savepath: str, name: str):
-    print(f"{datetime.now()}\tProcessing file {pathto}...")
-
-    brain=brain_set()
-    skull_shell, skull_solid = skull_sets()
-    # brain=[101]
-    # skull_shell=[101]
-    # skull_solid=[101]
-
-    process_start = time.time()
-
-    print(f"{datetime.now()}\tLoading d3plot...")
-    step_start = time.time()
-    input_path = pathto + "d3plot"
-    d3plot = D3plot(input_path, buffered_reading=True)
-    # extract number of timesteps
-    timesteps = d3plot.n_timesteps
-
-    # define arrays of element and node ids
-    element_solid_ids = d3plot.arrays["element_solid_ids"]
-    element_shell_ids = d3plot.arrays["element_shell_ids"]
-    element_solid_indices = d3plot.arrays["element_solid_node_indexes"]
-    node_ids = d3plot.arrays["node_ids"]
-
-    # create array of part IDs for each element
-    element_solid_part_ids, element_shell_part_ids = element_part_ids(d3plot)
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-    print(f"{datetime.now()}\tFinding elements in part sets...")
-    step_start = time.time()
-    # find all elements and nodes in given part list
-    brain_elements = elements_in_part_set(element_solid_part_ids, brain)
-
-    # calculate the nodal coordinate history
-    node_history = d3plot.arrays["node_displacement"]
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    print(f"{datetime.now()}\tCalculating element volume history...")
-    step_start = time.time()
-    # calculate element volume history
-    brain_volume_history = element_list_volume_history(
-        element_solid_indices[brain_elements, :], node_history
-    )
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    # calculate intracranial pressure
-    print(f"{datetime.now()}\tCalculating pressure...")
-    step_start = time.time()
-    pressure = pressure(d3plot, brain_elements)
-    pmaxtime = np.max(pressure, axis=0)
-    p99 = np.quantile(pressure, 0.99, axis=0)
-    p95 = np.quantile(pressure, 0.95, axis=0)
-
-    pout = np.stack((pmaxtime, p99, p95), axis=1)
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    # calculate the principal and max shear strain
-    print(f"{datetime.now()}\tCalculating principal strains...")
-    step_start = time.time()
-    prinstrain, msstrain = mps_mss(d3plot, brain_elements, "strain")
-    psmaxtime = np.max(prinstrain[:, :, 0], axis=0)
-    ps99 = np.quantile(prinstrain[:, :, 0], 0.99, axis=0)
-    ps95 = np.quantile(prinstrain[:, :, 0], 0.95, axis=0)
-
-    psout = np.stack((psmaxtime, ps99, ps95), axis=1)
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    # calculate the von mises stress
-    print(f"{datetime.now()}\tCalculating von mises stresses...")
-    step_start = time.time()
-    vmstress = von_mises(d3plot, brain_elements)
-    vmmaxtime = np.max(vmstress, axis=0)
-    vm99 = np.quantile(vmstress, 0.99, axis=0)
-    vm95 = np.quantile(vmstress, 0.95, axis=0)
-
-    vmout = np.stack((vmmaxtime, vm99, vm95), axis=1)
-    # print(vmstress[:,0])
-
-    # print(vmstress[:,0])
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    print(f"{datetime.now()}\tCalculating part internal energy...")
-    step_start = time.time()
-    # calculate the internal energy
-    inten = internal_energy(d3plot, skull_shell + skull_solid)
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    # Calculate CSDM and VSM metrics
-    print(f"{datetime.now()}\tCalculating CSDM and VSM metrics...")
-    step_start = time.time()
-    csdm_matrix, csdm15, csdm25, vsm = csdm(prinstrain[:, :, 0], brain_volume_history)
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    print(f"{datetime.now()}\tWriting output files...")
-    step_start = time.time()
-    output_summary = [
-        ["csdm15", csdm15],
-        ["csdm25", csdm25],
-        ["vsm", vsm],
-        ["pressuremax", np.max(pmaxtime)],
-        ["pressure99", np.max(p99)],
-        ["pressure95", np.max(p95)],
-        ["pstrainmax", np.max(psmaxtime)],
-        ["pstrain99", np.max(ps99)],
-        ["pstrain95", np.max(ps95)],
-        ["vmemax", np.max(vmmaxtime)],
-        ["vm99", np.max(vm99)],
-        ["vm95", np.max(vm95)],
-        ["skullenergy", np.max(inten)],
-    ]
-
-    summary_string = savepath + name + "_summary.csv"
-    with open(summary_string, "w") as summaryfile:
-        writer = csv.writer(summaryfile)
-        writer.writerows(output_summary)
-
-    # save outputs
-    np.savetxt(savepath + name + "_pressure.csv", pressure, delimiter=",", fmt="%e")
-    np.savetxt(savepath + name + "_pressurestats.csv", pout, delimiter=",", fmt="%e")
-    np.savetxt(
-        savepath + name + "_prinstrain.csv",
-        prinstrain[:, :, 0],
-        delimiter=",",
-        fmt="%e",
-    )
-    np.savetxt(savepath + name + "_prinstrainstats.csv", psout, delimiter=",", fmt="%e")
-    np.savetxt(savepath + name + "_Vonmises.csv", vmstress, delimiter=",", fmt="%e")
-    np.savetxt(savepath + name + "_Vonmisesstats.csv", vmout, delimiter=",", fmt="%e")
-    np.savetxt(
-        savepath + name + "_CSDMhistory.csv", csdm_matrix, delimiter=",", fmt="%e"
-    )
-
-    process_end = time.time()
-    step_end = time.time()
-    print(f"{datetime.now()}\tComplete, {step_end-step_start} seconds.")
-
-    print(
-        f"{datetime.now()}\tFile processing complete for {pathto}, run time: {process_end-process_start} seconds"
-    )
-
-
-# ******************************MAIN*******************************
-
-# load the d3plot file
-pathto = "/scratch/jennings.t/fitimpact/expfront/"
-outputpath = "/scratch/jennings.t/fitimpact/"
-name = "expfront"
-
-
-# pathto = "T:/LSDYNA/codetest/"
-# outputpath = "T:/codes/THUMSinjurymetrics/"
-# name = "codetest"
-# pathto="T:\codes\THUMSinjurymetrics"
-
-process_run(pathto, outputpath, name)
-'''
+def write_array(name:str,array:np.ndarray,csv=False):
+    if csv==True:
+        np.savetxt(name, array, delimiter=",", fmt="%e")
+    elif csv==False:
+        np.save(name,array)
+    else:
+        raise ValueError("csv must be a boolean")
