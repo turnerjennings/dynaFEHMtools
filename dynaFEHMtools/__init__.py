@@ -286,3 +286,24 @@ def write_array(name:str,array:np.ndarray,csv=False):
         np.save(name,array)
     else:
         raise ValueError("csv must be a boolean")
+    
+def element_centroids(object:D3plot, element_set:np.ndarray):
+    '''
+    returns an array with the xyz coordinates of each element in the set
+    with dimensions [n_steps, n_elements, 3]
+    '''
+    coordinates=object.arrays["node_displacement"]
+    print(coordinates.shape)
+    indexes=object.arrays["element_solid_node_indexes"]
+    indexes=indexes[element_set,:]
+    print(indexes.shape)
+
+    elcoords=np.empty((coordinates.shape[0],indexes.shape[0],8,3))
+
+    for i in range(coordinates.shape[0]):
+        elcoords[i,:,:,:]=coordinates[i,indexes]
+    print(elcoords.shape)
+    centroid=np.apply_along_axis(np.average,2,arr=elcoords)
+    print(centroid[0,0,:])
+    
+    
