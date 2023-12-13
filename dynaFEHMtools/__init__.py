@@ -1,7 +1,6 @@
 from lasso.dyna import D3plot
 import numpy as np
 import scipy.spatial as sps
-import injurymetrics
 
 # *****************************USER INPUTS****************************
 filepaths_to_analyse = [""]
@@ -146,10 +145,11 @@ def THUMS_skull_sets(offset=0):
         88000096,
         88000097,  # left skull
     ]
-    return [i + offset for i in skull_solid_part_ids], [
-        i + offset for i in skull_shell_part_ids
-    ]
+    
+    solid_set=[i + offset for i in skull_solid_part_ids]
+    shell_set=[i + offset for i in skull_shell_part_ids]
 
+    return solid_set,shell_set
 
 
 # function to return arrays of the part numbers associated with each element
