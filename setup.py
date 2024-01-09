@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="dynaFEHMtools",
-    version='0.0.1.dev6',
+    version='0.0.1.dev7',
     description='Tools for FE head model data condensation in LS-DYNA',
     url="https://github.com/turnerjennings/dynaFEHMtools",
     classifiers=[

@@ -2,7 +2,7 @@ from lasso.dyna import D3plot
 import numpy as np
 
 # function to calculate hydrostatic pressure
-def element_pressure(object: D3plot, element_set: np.ndarray, type="solid"):
+def element_pressure(object: D3plot, element_set: np.ndarray, type="solid", state_subset=None):
     '''
     Return array of float pressure with dimension [n_timesteps,n_elements]
     
@@ -32,15 +32,22 @@ def element_pressure(object: D3plot, element_set: np.ndarray, type="solid"):
     )
 
     pressure_element = np.sum(pressure, 2)
-    return pressure_element
+
+
+    #output based on subset
+    if state_subset != None:
+        subset_output=pressure_element[state_subset[0]:state_subset[1], :]
+        return subset_output
+    else:
+        return pressure_element
 
 
 # function to calculate the max principal strain history
-def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type="solid"):
+def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type="solid",state_subset=None):
     '''
     Returns an array of principal stresses or strains
     with demension [n_states,n_elements,3]
-    Returns an array of max shear strain with shape [n_states,n_elements]
+    Returns an array of max shear strain with shape [n_states,n_elements,1]
 
     for MPS array, values are sorted largest to smallest
     Principal confiuration calculated by the eigenvalues of the stress tensor
@@ -79,11 +86,16 @@ def mps_mss(object: D3plot, element_set: np.ndarray, stressstrain="stress",type=
     prinstrain = prinstrain.transpose(1, 2, 0)
     mss = mss.reshape((tensor.shape[2], tensor.shape[3]))
 
-    return prinstrain, mss
+    if state_subset != None:
+        pssubset=prinstrain[state_subset[0]:state_subset[1],:,:]
+        msssubset=mss[state_subset[0]:state_subset[1],:,:]
+        return pssubset,msssubset
+    else:
+        return prinstrain, mss
 
 
 # function to calculate the von mises stress
-def von_mises(object: D3plot, element_set: np.ndarray):
+def von_mises(object: D3plot, element_set: np.ndarray, state_subset=None):
     '''
     Returns an array of the von mises stress with dimension [n_states,n_elements]
 
@@ -112,12 +124,16 @@ def von_mises(object: D3plot, element_set: np.ndarray):
     )
     vm = np.squeeze(vm, axis=2)
 
-    return vm
+    if state_subset != None:
+        vmsubset=vm[state_subset[0]:state_subset[1],:]
+        return vmsubset
+    else:
+        return vm
 
 
 # function to return the internal energy of a part set
 # return: array of part internal energy (n_states, n_parts)
-def internal_energy(object: D3plot, partset: list):
+def internal_energy(object: D3plot, partset: list, state_subset=None):
     '''
     Returns the total internal energy of a part set
 
@@ -131,7 +147,11 @@ def internal_energy(object: D3plot, partset: list):
     # find internal energy from part index
     inten = object.arrays["part_internal_energy"]
     inten = np.sum(inten[:, part_idx], axis=1)
-    return inten
+
+    if state_subset != None:
+        return inten[state_subset[0]:state_subset[1]]
+    else:
+        return inten
 
 # function to calculate the CSDM distribution
 # return distribution, %>0.15, %>0.25
@@ -161,4 +181,6 @@ def csdm(MPS: np.ndarray, volume: np.ndarray):
     csdm25 = survival[500]
 
     VSM = np.trapz(survival, thresholds)
+
+
     return survival, csdm15, csdm25, VSM
