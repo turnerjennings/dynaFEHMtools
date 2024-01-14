@@ -10,5 +10,6 @@ Built on top of [LASSO-python](https://github.com/open-lasso-python/lasso-python
 - Maximum shear stress/strain
 - Cumulative strain damage measure (CSDM)
 - Volumetrics strain measure (VSM)
+- skull internal energy
 
 ## Documentation
