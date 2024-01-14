@@ -13,3 +13,5 @@ Built on top of [LASSO-python](https://github.com/open-lasso-python/lasso-python
 - skull internal energy
 
 ## Documentation
+
+Project documentation can be found [here](https://turnerjennings.github.io/dynaFEHMtools/)
